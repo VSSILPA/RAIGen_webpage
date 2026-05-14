@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RAIGen — Minority Neuron Visualisations</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #fff; color: #111; line-height: 1.5; }
+
+  header {
+    background: #fff; border-bottom: 1px solid #e5e7eb;
+    padding: 1.25rem 2rem; display: flex; align-items: baseline; gap: 1.5rem;
+  }
+  header h1 { font-size: 1.25rem; font-weight: 700; }
+  header a  { font-size: 0.85rem; color: #555; text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;
+    padding: 1rem 2rem; background: #f9f9f9; border-bottom: 1px solid #e5e7eb;
+  }
+  .ctrl-group { display: flex; flex-direction: column; gap: 0.3rem; }
+  .ctrl-group label {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: #888;
+  }
+  select {
+    padding: 0.45rem 0.75rem; border: 1px solid #ddd;
+    border-radius: 6px; font-size: 0.9rem; background: #fff;
+    cursor: pointer; min-width: 200px;
+  }
+  select:focus { outline: 2px solid #111; outline-offset: 1px; }
+
+  #topn-group { transition: opacity 0.2s; }
+  #topn-group.hidden { opacity: 0; pointer-events: none; }
+
+  main { padding: 1.5rem 2rem; max-width: 1200px; }
+
+  #status {
+    font-size: 0.82rem; color: #888; margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem; border-bottom: 1px solid #f0f0f0;
+  }
+
+  .neuron-grid {
+    display: flex; flex-direction: column; gap: 1.25rem;
+  }
+  .neuron-row {
+    display: flex; align-items: flex-start; gap: 1rem;
+  }
+  .neuron-label {
+    min-width: 100px; text-align: right; flex-shrink: 0; padding-top: 4px;
+  }
+  .neuron-label strong { display: block; font-size: 0.82rem; color: #111; }
+  .neuron-label span   { font-size: 0.72rem; color: #999; }
+  .neuron-row img {
+    width: 100%; border-radius: 8px;
+    border: 1px solid #e5e7eb; display: block;
+  }
+  .img-wrap { flex: 1; position: relative; }
+  .img-wrap .loading {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 0.8rem; color: #bbb;
+    background: #f9f9f9; border-radius: 8px;
+  }
+
+  #placeholder { color: #aaa; font-size: 0.95rem; padding: 3rem 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RAIGen &mdash; Minority Neuron Visualisations</h1>
+  <a href="../index.html">&#8592; Project Page</a>
+</header>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <label>Task</label>
+    <select id="sel-task">
+      <option value="prof">Profession (WinoBias)</option>
+      <option value="coco">COCO Captions</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>Prompt</label>
+    <select id="sel-prompt"><option value="">— select a prompt —</option></select>
+  </div>
+  <div class="ctrl-group" id="topn-group">
+    <label>Top-N neurons</label>
+    <select id="sel-topn">
+      <option value="5">Top 5</option>
+      <option value="10" selected>Top 10</option>
+      <option value="15">Top 15</option>
+    </select>
+  </div>
+</div>
+
+<main>
+  <div id="status"></div>
+  <div id="gallery" class="neuron-grid">
+    <p id="placeholder">Select a task and prompt above to view minority neuron visualisations.</p>
+  </div>
+</main>
+
+<script>
+const MANIFEST = {
+  "prof": {
+    "Attendant": {
+      "files": [
+        "0000_neuron1026.png",
+        "0001_neuron1271.png",
+        "0002_neuron1285.png",
+        "0003_neuron1816.png",
+        "0004_neuron1901.png",
+        "0005_neuron0893.png",
+        "0006_neuron0998.png",
+        "0007_neuron1621.png",
+        "0008_neuron1099.png",
+        "0009_neuron0920.png",
+        "0010_neuron0060.png",
+        "0011_neuron0494.png",
+        "0012_neuron1429.png",
+        "0013_neuron1544.png",
+        "0014_neuron1030.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1yJLRhv7CmtXLJ8BicEM00hKsULQk_TsC",
+        "https://drive.google.com/uc?export=view&id=1SVvjwJsrLC7B_Ypaztugr1-qpNoJDCNS",
+        "https://drive.google.com/uc?export=view&id=1kXb2sRmdf7tsteaB87vsO-_HAW0QFThj",
+        "https://drive.google.com/uc?export=view&id=1YZo-5Ld7TkMT6x2ErwDIPkq8GtOOpeS-",
+        "https://drive.google.com/uc?export=view&id=1YGqwPKJXL6P7vViZ4y2dPgFup3nBBIMK",
+        "https://drive.google.com/uc?export=view&id=1v4Z4OOBTzGE8FMRKPxUeYF6RNNlWmrsn",
+        "https://drive.google.com/uc?export=view&id=1-Mf1VbV_o0dt5TfKvYFbeQqdOWeGh83O",
+        "https://drive.google.com/uc?export=view&id=1yPxDLSu4QxAqvyFcj0ofzKMjuYjB5FTF",
+        "https://drive.google.com/uc?export=view&id=1jvEVNfdTGRLZX0AWo_7sP3exZEPs2TY_",
+        "https://drive.google.com/uc?export=view&id=1Homv9lthLg3XEgym1Mw6YuJDtx7wPE5T",
+        "https://drive.google.com/uc?export=view&id=1T8765M_DliGRWuyW-DhqYbZr7oQk06kW",
+        "https://drive.google.com/uc?export=view&id=1ahSq6rRPEKr1oLsOnAhE8KA6iK1HZHZJ",
+        "https://drive.google.com/uc?export=view&id=1hYNH1jfU84yUVSvbUBZbjvFTpOG6OiUF",
+        "https://drive.google.com/uc?export=view&id=1PtbBX6v_iJhZ7PqVukzIh_fOWjjbLc4A",
+        "https://drive.google.com/uc?export=view&id=1PgnX0Nzx-kbXd3z5GIi5_GyZjG-MVAx-"
+      ]
+    },
+    "CEO": {
+      "files": [
+        "0000_neuron0030.png",
+        "0001_neuron0626.png",
+        "0002_neuron1049.png",
+        "0003_neuron1256.png",
+        "0004_neuron1024.png",
+        "0005_neuron1305.png",
+        "0006_neuron1574.png",
+        "0007_neuron0945.png",
+        "0008_neuron1951.png",
+        "0009_neuron1570.png",
+        "0010_neuron1566.png",
+        "0011_neuron1361.png",
+        "0012_neuron1147.png",
+        "0013_neuron0058.png",
+        "0014_neuron0952.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1qAGogYfLZnjRF-aRSKdH2CcffPeYkEkr",
+        "https://drive.google.com/uc?export=view&id=1rR1pvLw-WP5VYSRGcmOq1sgqi_HPALaT",
+        "https://drive.google.com/uc?export=view&id=1oQAXLNm8shSpxA8YGi--N2ipyjjcTNL9",
+        "https://drive.google.com/uc?export=view&id=1GdxPi4vZVfQdUcxerzNWB3J90LfDu-7S",
+        "https://drive.google.com/uc?export=view&id=1RvLvMayIbcIVftnEcaN7jtr5CFQb59_u",
+        "https://drive.google.com/uc?export=view&id=1bj3bAWMMwS6dTeUlGJifdlgoOSvXCM1n",
+        "https://drive.google.com/uc?export=view&id=1CK8vHgT6PZG7nCwQ56Shp2H863cu3leV",
+        "https://drive.google.com/uc?export=view&id=1bnCIBSGQ4i7G2xnz3nVft5KV5Fw4g5Wg",
+        "https://drive.google.com/uc?export=view&id=1qFudCm7nnAphOjA3zDVIP8UAVkd2Loxs",
+        "https://drive.google.com/uc?export=view&id=1VcaW3Uvkwk7Qrd7JDxd9zZITsXlY-W6V",
+        "https://drive.google.com/uc?export=view&id=1VjApnuVH4yEfwYX_buRlSTzE5zb4uTIv",
+        "https://drive.google.com/uc?export=view&id=1CYNc4mCUsS-WLS9EONoWblD9Oxez1EpP",
+        "https://drive.google.com/uc?export=view&id=1bYXrLDHMt8-JpJyb6W9XPX9B8mRR6jFn",
+        "https://drive.google.com/uc?export=view&id=1vLqtUjV-gfbjyNOAarMVMhWM_zU0JzWG",
+        "https://drive.google.com/uc?export=view&id=1_jgV2nQsNTJHjX8l8WwKC3mf7bJehWlv"
+      ]
+    },
+    "Cleaner": {
+      "files": [
+        "0000_neuron0622.png",
+        "0001_neuron1044.png",
+        "0002_neuron0727.png",
+        "0003_neuron1544.png",
+        "0004_neuron1072.png",
+        "0005_neuron1609.png",
+        "0006_neuron1570.png",
+        "0007_neuron1286.png",
+        "0008_neuron0767.png",
+        "0009_neuron0352.png",
+        "0010_neuron0505.png",
+        "0011_neuron0725.png",
+        "0012_neuron0763.png",
+        "0013_neuron1006.png",
+        "0014_neuron0518.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1lic2EffV0WohLKzJJk3VD5wig1Z27rmS",
+        "https://drive.google.com/uc?export=view&id=1QMS9KKUBwbTwi3bngP-J7Djfi8GA1q3A",
+        "https://drive.google.com/uc?export=view&id=17JN_tk3hY2WVzbr5qoq3imUlixMUNz9W",
+        "https://drive.google.com/uc?export=view&id=1hrodve3mfTzKe1xDE5Sui-ZEiszokU0f",
+        "https://drive.google.com/uc?export=view&id=1Cv52VpZZy_ytFn6od7ydgrsRaowwlf8F",
+        "https://drive.google.com/uc?export=view&id=141Joy5KrO4EEeRf6tHTg1BTDfWWAzjUD",
+        "https://drive.google.com/uc?export=view&id=1sBRH8cNJNWZaXK-SLKdvLi4LTyTRggOy",
+        "https://drive.google.com/uc?export=view&id=10kb1SzblL8iPl4_nhbOPZKit3VUnP1pa",
+        "https://drive.google.com/uc?export=view&id=10-RY32j9UtS3M2rd9lkOLG2Y2V94VczB",
+        "https://drive.google.com/uc?export=view&id=1TNkccmv5UlNO-xV6Y6VBPgx_94IqqkM2",
+        "https://drive.google.com/uc?export=view&id=1EQlChFjMYbDToKkh2Y5YQAyQNy5S4Qs9",
+        "https://drive.google.com/uc?export=view&id=1doRoSHOvWWOCAYpEu36ZIAKGEcwLhcXo",
+        "https://drive.google.com/uc?export=view&id=1YbQTw5tHfy6cYR8DCBMcJXeUgBNFq4i8",
+        "https://drive.google.com/uc?export=view&id=1L97SxVYTum9UwliYxoP9hxn3evkPiidP",
+        "https://drive.google.com/uc?export=view&id=1imrKrt2mqracXNEk5OH5JVtAp5v8KoUg"
+      ]
+    },
+    "Doctor": {
+      "files": [
+        "0000_neuron0638.png",
+        "0001_neuron1381.png",
+        "0002_neuron0795.png",
+        "0003_neuron0279.png",
+        "0004_neuron1820.png",
+        "0005_neuron1120.png",
+        "0006_neuron0609.png",
+        "0007_neuron1768.png",
+        "0008_neuron0168.png",
+        "0009_neuron1292.png",
+        "0010_neuron0778.png",
+        "0011_neuron1488.png",
+        "0012_neuron1373.png",
+        "0013_neuron1380.png",
+        "0014_neuron0907.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=13Xdq-9VFMUgHM4X-RtIRqM4onvjEanu9",
+        "https://drive.google.com/uc?export=view&id=1cf0Cbo58GHG9x91-J6eMK6N_I5X_EgGd",
+        "https://drive.google.com/uc?export=view&id=148M8qxKsBHqx6KL57suEKzVMT8zz_W2U",
+        "https://drive.google.com/uc?export=view&id=1_Xrm2i4LPzUvDCGUTyW37lSe_cwpQyVK",
+        "https://drive.google.com/uc?export=view&id=1XH3R0wRrKXEZyIxPICWOc2SIizaEiXyN",
+        "https://drive.google.com/uc?export=view&id=1hlBAyJgBmJ6MeB_v78jSXyBBQO3DO_Ga",
+        "https://drive.google.com/uc?export=view&id=1Y9NgysYF7y5p901c1ac5qaDMauwD-K-m",
+        "https://drive.google.com/uc?export=view&id=1UJg0egwShXXnksvI0t-xss0FYKSiFFt-",
+        "https://drive.google.com/uc?export=view&id=1uhRz-qWZSP7hJBhqo4E85agiarer0SWs",
+        "https://drive.google.com/uc?export=view&id=1P-0gP2THyMG2OkXgGA5UPG_omVh9blPj",
+        "https://drive.google.com/uc?export=view&id=167gr1ZUVjMMlh1IZpQaMaij_NkV9DXqF",
+        "https://drive.google.com/uc?export=view&id=1dLc7Kkx1CtPCGHDCDw4v1JeIyXipf7jx",
+        "https://drive.google.com/uc?export=view&id=1mpTAmshRInD5LP5ktJXzhr3edMyYcLar",
+        "https://drive.google.com/uc?export=view&id=1RseNEs0Z8enjs4wMZMcmc4slKEts03XL",
+        "https://drive.google.com/uc?export=view&id=1-U4GjRO_csZXJEQlNA5eeoxDy9ZdB8PM"
+      ]
+    },
+    "Farmer": {
+      "files": [
+        "0000_neuron1930.png",
+        "0001_neuron0511.png",
+        "0002_neuron0533.png",
+        "0003_neuron1281.png",
+        "0004_neuron1990.png",
+        "0005_neuron1022.png",
+        "0006_neuron0943.png",
+        "0007_neuron1805.png",
+        "0008_neuron1995.png",
+        "0009_neuron0649.png",
+        "0010_neuron1291.png",
+        "0011_neuron1531.png",
+        "0012_neuron0358.png",
+        "0013_neuron1161.png",
+        "0014_neuron0768.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1EdDGc6aZdUMwQ-GayUgjHlveaaeOmjJ2",
+        "https://drive.google.com/uc?export=view&id=1VX2ciG1BojA-BnWS6vo-oioej7_6a0P2",
+        "https://drive.google.com/uc?export=view&id=1h9XOlTDsk3tIpQJ3Z3zhgZeAWjJeLCKp",
+        "https://drive.google.com/uc?export=view&id=1KriJU-K8xKBB_law23PFTv9GnCj28nz3",
+        "https://drive.google.com/uc?export=view&id=1HcoVygIe689uLCH1pkXl74Tq4iZ88zxP",
+        "https://drive.google.com/uc?export=view&id=1v6SRzOHDOl6oshXmj6XE_-EAnTTpwhxk",
+        "https://drive.google.com/uc?export=view&id=1o_lYZxXB0K7agw_Tsv1h5llVHE5Qpnkr",
+        "https://drive.google.com/uc?export=view&id=1JUDOQy6PaUJJB737m5IfOaDaQ8yAD419",
+        "https://drive.google.com/uc?export=view&id=1PaPT2g4-iH8Uwvwjga0WCHZDrkirvPoy",
+        "https://drive.google.com/uc?export=view&id=1qO9cCbE-nYueDSwfN_1x9LKw94WDChq3",
+        "https://drive.google.com/uc?export=view&id=1fu3geroBOgtUuoFAOyNBj3LEToTgPyaj",
+        "https://drive.google.com/uc?export=view&id=1R-TrgZrdbFeTVLckhs8A80_nZ6X1HklZ",
+        "https://drive.google.com/uc?export=view&id=1ub04cKZ7samWzBR4PcFBBImrbRfvolQ7",
+        "https://drive.google.com/uc?export=view&id=1yOG-7tVXXwYm8XaxahwuUIqjDmLfz0--",
+        "https://drive.google.com/uc?export=view&id=1RoTexdUL1zZa9NgkZBnD7DzmFVIuwc5t"
+      ]
+    },
+    "Hairdresser": {
+      "files": [
+        "0000_neuron0141.png",
+        "0001_neuron1222.png",
+        "0002_neuron1579.png",
+        "0003_neuron0609.png",
+        "0004_neuron0338.png",
+        "0005_neuron0560.png",
+        "0006_neuron1695.png",
+        "0007_neuron1662.png",
+        "0008_neuron1190.png",
+        "0009_neuron0616.png",
+        "0010_neuron1140.png",
+        "0011_neuron1826.png",
+        "0012_neuron1283.png",
+        "0013_neuron0288.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1WnvDQgDZXCbMc8VeTbWPdzyRCxb0s-Oj",
+        "https://drive.google.com/uc?export=view&id=1T5S2mYZx9T-2YzpfvDvMjKLG_Ri30Evl",
+        "https://drive.google.com/uc?export=view&id=1yvZqEHAfeEuvL3QMXZTa_YCcTmtdlStf",
+        "https://drive.google.com/uc?export=view&id=1SzydehgqFwUXQGyhBHu9VPtxIyoBCfiW",
+        "https://drive.google.com/uc?export=view&id=1hzWvNRfgxbaNPt4gbRoe9EkITZzTtj-g",
+        "https://drive.google.com/uc?export=view&id=1XVPPvxZEWSL0YSJMu0GncCIBfqN4K_F1",
+        "https://drive.google.com/uc?export=view&id=1wNGe6uo0deiPyw0ORFNVliwaRisemCEx",
+        "https://drive.google.com/uc?export=view&id=1FTa3cOtYPf6ACY1jvi6Dxi8tOc-9DZD7",
+        "https://drive.google.com/uc?export=view&id=1wZdH73gplQ8HXoyrVavwl5OZZxW7URHv",
+        "https://drive.google.com/uc?export=view&id=1E29ZycxoIFxqb68a4U68PMvXd60j4PCW",
+        "https://drive.google.com/uc?export=view&id=1cGuhkPS2m1LWeqHR7kQsi-RauYXppcYh",
+        "https://drive.google.com/uc?export=view&id=1wSNLlcwKTgO9yoznAj8mxUUz6cIydGqs",
+        "https://drive.google.com/uc?export=view&id=1ZG2eCdbZtjlXUFXZHoZ8Xp-2K5Okk32r",
+        "https://drive.google.com/uc?export=view&id=1mh0KB7NQrBsp2fi172i0KiY3Lv9AlnFS"
+      ]
+    },
+    "Manager": {
+      "files": [
+        "0000_neuron1450.png",
+        "0001_neuron0494.png",
+        "0002_neuron1099.png",
+        "0003_neuron0687.png",
+        "0004_neuron0057.png",
+        "0005_neuron1457.png",
+        "0006_neuron1764.png",
+        "0007_neuron1560.png",
+        "0008_neuron1023.png",
+        "0009_neuron0129.png",
+        "0010_neuron0589.png",
+        "0011_neuron0576.png",
+        "0012_neuron1975.png",
+        "0013_neuron0365.png",
+        "0014_neuron0727.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1cMCH_vATeCUMaPmTrwMNfdj0if2f6oW6",
+        "https://drive.google.com/uc?export=view&id=1RTVVMaxrAZ57ym3SG5SEFT20-rHOrmgo",
+        "https://drive.google.com/uc?export=view&id=1PcQZQ6O0i0pOAB7afr_UkJU_1f0-_aaq",
+        "https://drive.google.com/uc?export=view&id=1RIDhR-hEoQw5kNOL7VikNxX7SBXYSgt5",
+        "https://drive.google.com/uc?export=view&id=1-F16KwLRaYt3JRqxa8d6-QKiCZilZi3-",
+        "https://drive.google.com/uc?export=view&id=1VDQTt4st2zeBizwke-z-VqUDqk5YXDB6",
+        "https://drive.google.com/uc?export=view&id=11MbdcTtibeB4N6sz8zottxlBHtLCI9ut",
+        "https://drive.google.com/uc?export=view&id=1mkmwIap9YbmNLX_5O6pEyLuKwwxG99IB",
+        "https://drive.google.com/uc?export=view&id=10ICyURGN4Zm-vl7TNxg_ipfcuTgKQaus",
+        "https://drive.google.com/uc?export=view&id=1eRTIkOQqgFZrNeThsoiB3SOTsoEBEcSr",
+        "https://drive.google.com/uc?export=view&id=1fhKfBBrrBiaJm9MdG20DJayqqoW9Im0V",
+        "https://drive.google.com/uc?export=view&id=1ThkddMr7kQDP12QVRiO4pzPZVfJzoM53",
+        "https://drive.google.com/uc?export=view&id=1qoRqpR47qWleVZkNiOaTnoDzra_i8hbn",
+        "https://drive.google.com/uc?export=view&id=1C718rncniPooISDGaCOtV2XVCDUnTOYn",
+        "https://drive.google.com/uc?export=view&id=1SJ0FiYeTG0ZsYc_eeGhs_jxSsvZlq5ht"
+      ]
+    },
+    "Nurse": {
+      "files": [
+        "0000_neuron1122.png",
+        "0001_neuron1786.png",
+        "0002_neuron0899.png",
+        "0003_neuron1371.png",
+        "0004_neuron1585.png",
+        "0005_neuron1233.png",
+        "0006_neuron0954.png",
+        "0007_neuron0199.png",
+        "0008_neuron0412.png",
+        "0009_neuron1812.png",
+        "0010_neuron1486.png",
+        "0011_neuron1574.png",
+        "0012_neuron0944.png",
+        "0013_neuron0718.png",
+        "0014_neuron1401.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1-QS3UkO-YIdFMV09HYAK3FWXo1YlXIn1",
+        "https://drive.google.com/uc?export=view&id=1Ll84wKD9N5GLg4zcCUcmHNctW0MN0XtN",
+        "https://drive.google.com/uc?export=view&id=1D6J5vop2vHaf8tV6CVtpiXlDZVW4N8R2",
+        "https://drive.google.com/uc?export=view&id=1yYFX6xWaTsoEO2_sdTuFeDplu4ef1HNS",
+        "https://drive.google.com/uc?export=view&id=18-R5q2hwsUdE7DLPpLeGsJd3JzOjz2SA",
+        "https://drive.google.com/uc?export=view&id=1FI1UcpvQojEy9S26ylAXtErM7Ndp8DCb",
+        "https://drive.google.com/uc?export=view&id=1zrp4WMcvVEOBb8EosN9sBNJX1kyRLj5I",
+        "https://drive.google.com/uc?export=view&id=1dNkjbguTXnGHPl1ZeL2I9ZXREQfqHojc",
+        "https://drive.google.com/uc?export=view&id=1SC5gERY_Z1napgCzbvYWGx_VcCrT9n28",
+        "https://drive.google.com/uc?export=view&id=1tPruj804YZVGscRzQ0e1cpbcF5k9VSEv",
+        "https://drive.google.com/uc?export=view&id=1_xoZU0FoTZnReeZLC75kkyERXTaLch7b",
+        "https://drive.google.com/uc?export=view&id=1TJka_iHoFcajNBKovaTpxtnROX8bU8zL",
+        "https://drive.google.com/uc?export=view&id=1ReyJ8SJb_vFae-9cUz8U5bKmDH2blJ9q",
+        "https://drive.google.com/uc?export=view&id=1Gu0HIEYb4iKGuWLiySbJB_Kq1rhNl0jU",
+        "https://drive.google.com/uc?export=view&id=1BmPrupfED-I2yL6OIoO-KeRRLsBDfBMs"
+      ]
+    },
+    "Sheriff": {
+      "files": [
+        "0000_neuron0051.png",
+        "0001_neuron1483.png",
+        "0002_neuron0280.png",
+        "0003_neuron0320.png",
+        "0004_neuron2006.png",
+        "0005_neuron0476.png",
+        "0006_neuron1263.png",
+        "0007_neuron1520.png",
+        "0008_neuron0624.png",
+        "0009_neuron0577.png",
+        "0010_neuron0148.png",
+        "0011_neuron1566.png",
+        "0012_neuron1356.png",
+        "0013_neuron1654.png",
+        "0014_neuron1970.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1P-wlwgrSriIkMF5G_EATmjq0kKRWqQu-",
+        "https://drive.google.com/uc?export=view&id=1neY_HI3P29ZVuvcBtnhpkU5oPt2LZPAA",
+        "https://drive.google.com/uc?export=view&id=1rhBkZTxht1mto1tvfXTkKr8la_Xbp7XJ",
+        "https://drive.google.com/uc?export=view&id=1adowQVB5FG8ZGrwCFD8HQ3gUCVggiVD0",
+        "https://drive.google.com/uc?export=view&id=1lC6CWOES4EQodZZ58YfBDCD6Qsbw_tIq",
+        "https://drive.google.com/uc?export=view&id=1gY2r4pLHM73OUmmn7ZWksnkQtcDFk3lK",
+        "https://drive.google.com/uc?export=view&id=195mQVAMfZHHZCwPu2XLGDU72wTPFSRz6",
+        "https://drive.google.com/uc?export=view&id=11I1Yx1X36EAFUjEdQvhvE4MJjUACzEgJ",
+        "https://drive.google.com/uc?export=view&id=12HyySCfbxqQi_O7ev88JIPGHf-87_WMn",
+        "https://drive.google.com/uc?export=view&id=1Z4OWKq-D0EzWt-glf8ExhUCtk_qHi0z-",
+        "https://drive.google.com/uc?export=view&id=1PMyjF_35zwxBRANEslP2uPmv5c7sMDis",
+        "https://drive.google.com/uc?export=view&id=19cJupmQj216InU_svLapMDvIlVd4Hgdw",
+        "https://drive.google.com/uc?export=view&id=1Gc8ZAvhVO1Ho-ABKR_qcuY3tQGZsGkQp",
+        "https://drive.google.com/uc?export=view&id=1I636YgQC7bultGtCR9jovIGs0nesMtaC",
+        "https://drive.google.com/uc?export=view&id=1T02_kZ44EEPdzxAzRE-1B3vPO3kown2Z"
+      ]
+    }
+  },
+  "coco": {
+    "A bathroom scene with focus on the toilet.": {
+      "files": [
+        "0000_neuron0453.png",
+        "0001_neuron1173.png",
+        "0002_neuron2022.png",
+        "0003_neuron1135.png",
+        "0004_neuron1157.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1GC9-DeF4sh03iBCrLaQAcP9H5MCY-eZH",
+        "https://drive.google.com/uc?export=view&id=1m27GxtI3IgqcgpUWIYs_u5vKJsI4wvek",
+        "https://drive.google.com/uc?export=view&id=137yR_6pk9lrJt3T8iSJtTIZ6KtBohNuB",
+        "https://drive.google.com/uc?export=view&id=1JctD1lRfiNEVwwlZDt8J15K4v7nD-ZhX",
+        "https://drive.google.com/uc?export=view&id=1T_t1aUKTfWfOAoh8WU1QeLdScqcBTHks"
+      ]
+    },
+    "A batter swings the bat as the crowd watches attentively.": {
+      "files": [
+        "0000_neuron0902.png",
+        "0001_neuron0899.png",
+        "0002_neuron0251.png",
+        "0003_neuron1504.png",
+        "0004_neuron1430.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1wfzaPJz722Qd-E2twy-R6Ssj_dZDfVD9",
+        "https://drive.google.com/uc?export=view&id=17cpMiHmX_aPc_U0jYjVIwIvgvKRoRNQ7",
+        "https://drive.google.com/uc?export=view&id=1Jpyp1ULLr5K6c5a6bmtp9GAxMTkAo594",
+        "https://drive.google.com/uc?export=view&id=1uAfqSdMOPDrEcTY_jatdfT78aDPaCbey",
+        "https://drive.google.com/uc?export=view&id=15WgvyEuHIyltkiQHnOjemux2CP7tZfay"
+      ]
+    },
+    "A bowl of soup, a pickle, and a sandwich are on a plate.": {
+      "files": [
+        "0000_neuron1600.png",
+        "0001_neuron0095.png",
+        "0002_neuron1643.png",
+        "0003_neuron1256.png",
+        "0004_neuron1248.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1J-VDrmX4YQaT5RlGCq0pobUhTCFtQKzQ",
+        "https://drive.google.com/uc?export=view&id=1fO0JAsIOHrez8X1cewLChTCZ2wNpp3eh",
+        "https://drive.google.com/uc?export=view&id=1Tfdp2FQpdEHh98vap2mUn1ubXGQMYD8V",
+        "https://drive.google.com/uc?export=view&id=12V0KiycDUHm30v-cotakiragaG_ij8Jj",
+        "https://drive.google.com/uc?export=view&id=1mLh3_0epzaP-z469-XIL6rmMPNiTPSU1"
+      ]
+    },
+    "A boy hangs up paper kites on a string.": {
+      "files": [
+        "0000_neuron0333.png",
+        "0001_neuron1957.png",
+        "0002_neuron1445.png",
+        "0003_neuron1278.png",
+        "0004_neuron0437.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1nOapRXe5hNDmkA8hfkkJh6sMY9FRjLwN",
+        "https://drive.google.com/uc?export=view&id=13fIvV8OVUHftZ7sQzM_zbghGTEGar7Uk",
+        "https://drive.google.com/uc?export=view&id=1Z7OwjePLkmT4TDB42jUKiIBjAi7y5cb2",
+        "https://drive.google.com/uc?export=view&id=1wghEO17STdwFAjYeACktqPG9qtXVyhUn",
+        "https://drive.google.com/uc?export=view&id=1mwgAYKlxWEB7gFc8JbDdArkUlKR14Hs3"
+      ]
+    },
+    "A cat lying inside a sink with a hair brush, sanitizer and toothpaste on top.": {
+      "files": [
+        "0000_neuron0246.png",
+        "0001_neuron1030.png",
+        "0002_neuron0106.png",
+        "0003_neuron1796.png",
+        "0004_neuron1641.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1hUNDbCnCvEUfEze2SIGF1ZSxFLJJvtA1",
+        "https://drive.google.com/uc?export=view&id=1U-s0tjCHtoeabxOUFjU39iHnDT6eQvju",
+        "https://drive.google.com/uc?export=view&id=1X8_Woaza_XZmBVt4jNSXW486W9i1jCoy",
+        "https://drive.google.com/uc?export=view&id=12QLo6iV1MoXO37dTgtb-BkjmJNHak6V2",
+        "https://drive.google.com/uc?export=view&id=1JHJurZjeDMFdNmu1elBOBwKl1wv7h_ss"
+      ]
+    },
+    "A clock hanging outside in front of a property.": {
+      "files": [
+        "0000_neuron0165.png",
+        "0001_neuron1209.png",
+        "0002_neuron1620.png",
+        "0003_neuron1274.png",
+        "0004_neuron1148.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1sfPlRUZtTlJjAv1amiPN5OBgKLG9rhFg",
+        "https://drive.google.com/uc?export=view&id=1tmAJhg3eabI16l4I2cOrwR8fm1jWJpin",
+        "https://drive.google.com/uc?export=view&id=1wgebV_Z3GpF0Z59lnw4i9PZfwLC5RJT8",
+        "https://drive.google.com/uc?export=view&id=1wd3KHiZHLjZSMPZP8cuylhTi4dmZDStc",
+        "https://drive.google.com/uc?export=view&id=1dPl4IViUcTO3nssZpMm07lD1fymBile4"
+      ]
+    },
+    "A clock with a horse painting below and two cat pictures on the sides.": {
+      "files": [
+        "0000_neuron1790.png",
+        "0001_neuron1439.png",
+        "0002_neuron1303.png",
+        "0003_neuron0750.png",
+        "0004_neuron1569.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1o3L9Kmt0weoiwJx8xEIdCxgMJn8riEKm",
+        "https://drive.google.com/uc?export=view&id=1yJMJyB6sa4pjSLGAT60rx0O-90BDLEfa",
+        "https://drive.google.com/uc?export=view&id=1t43mI6CWpjjBo2J3IUznsybmGXPj7gFo",
+        "https://drive.google.com/uc?export=view&id=1YZ9cPKtDbBcrw4hkQ1IngRD-yNisRGJE",
+        "https://drive.google.com/uc?export=view&id=17EM8d1Jl-2XauD6zaKUVXSj4srmwRGUi"
+      ]
+    },
+    "A couple of people carrying surf boar walk on a beach.": {
+      "files": [
+        "0000_neuron1962.png",
+        "0001_neuron1184.png",
+        "0002_neuron1687.png",
+        "0003_neuron1971.png",
+        "0004_neuron0045.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1VVV1Q_x9ot39IQBTyIF8MzraFMgyu_z5",
+        "https://drive.google.com/uc?export=view&id=1hEmNroJWHdbvomcg_87lRyDiFZcPoXFc",
+        "https://drive.google.com/uc?export=view&id=1hTf9xzJbdw2JHp15Wr6GpZ_apiMrtMU2",
+        "https://drive.google.com/uc?export=view&id=1K4ZTVvozpvEA5B6Mo044MVVvE4SsKow3",
+        "https://drive.google.com/uc?export=view&id=1-l_m8BrsagtD2lEpyu3Mo3C3iU9gSZie"
+      ]
+    },
+    "A few people working with colored fabrics in different ways.": {
+      "files": [
+        "0000_neuron1086.png",
+        "0001_neuron0400.png",
+        "0002_neuron0652.png",
+        "0003_neuron1649.png",
+        "0004_neuron0921.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1RBzAiI9q_zpuNz-7s_5LZ9oNcImsZBa6",
+        "https://drive.google.com/uc?export=view&id=1mNFYvTTemnnD7y806Tp5wRbOHlysiPG0",
+        "https://drive.google.com/uc?export=view&id=1eUXUhUBa6maBLDsonkMwdso_eqJxJVwW",
+        "https://drive.google.com/uc?export=view&id=1ADVlHWoEpZUN0vMt5cTitU7eqNncS3FB",
+        "https://drive.google.com/uc?export=view&id=1ooUK5fEfx-zhBZl5dKUzdlQMoBAGN4u7"
+      ]
+    },
+    "A gag of the camera person of someone climbing there way out of the toilet.": {
+      "files": [
+        "0000_neuron0190.png",
+        "0001_neuron1009.png",
+        "0002_neuron0609.png",
+        "0003_neuron0354.png",
+        "0004_neuron1724.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1CSEGCZTGkNBcfRGfkfdzUBsP_kV2lCHw",
+        "https://drive.google.com/uc?export=view&id=1_BzSyGgLuKLTezhFI_SYmpa29xRFq5dR",
+        "https://drive.google.com/uc?export=view&id=1Pi30vbALqkoJnYUo8Sjf_VIgjcfkjbBE",
+        "https://drive.google.com/uc?export=view&id=1H-U_RFeRMJKYNOAipcw-4_3Hq58cELPI",
+        "https://drive.google.com/uc?export=view&id=1vw1kqikJ26i2HjHd6mWrKdo62ZIk9Fvf"
+      ]
+    },
+    "A group of lawn chairs sitting on top of a beach.": {
+      "files": [
+        "0000_neuron1281.png",
+        "0001_neuron0100.png",
+        "0002_neuron1050.png",
+        "0003_neuron0005.png",
+        "0004_neuron0736.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=156Owt-ai_5jIHUiuE4Dzd2eh3kgaw3nN",
+        "https://drive.google.com/uc?export=view&id=1VhRkHKtQn1A7bTc6yskT3w433IULZOm5",
+        "https://drive.google.com/uc?export=view&id=1qjqFnODbxJ6a4dBq1YNvvxBMWPVrAd-C",
+        "https://drive.google.com/uc?export=view&id=18akA3nSfT1gQOtNLzxsHw4jJvnaUv_s_",
+        "https://drive.google.com/uc?export=view&id=19PbP-NLLITIVxELUM8ojQE02hMrdQFq9"
+      ]
+    },
+    "A group of people wearing pink shirts preparing to play tennis.": {
+      "files": [
+        "0000_neuron1222.png",
+        "0001_neuron1505.png",
+        "0002_neuron1464.png",
+        "0003_neuron1030.png",
+        "0004_neuron0533.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1yZajCl5YSW9yv_BSLq5toFPScBKBKJ0l",
+        "https://drive.google.com/uc?export=view&id=1tVhK918F3JnpzYDn-RBrTtUqQTWWkcMD",
+        "https://drive.google.com/uc?export=view&id=192XQGJaVktufy_OxgMVRMHGlf3MAd1a5",
+        "https://drive.google.com/uc?export=view&id=1uMphcsxeLrBqgPnc5Ai9eDquwTwBoK5y",
+        "https://drive.google.com/uc?export=view&id=1QnWhWHT0qz659XmoVH2ckcDnHN8xZJw7"
+      ]
+    },
+    "A hallway with a small view of a bathroom toilet.": {
+      "files": [
+        "0000_neuron1389.png",
+        "0001_neuron1017.png",
+        "0002_neuron0936.png",
+        "0003_neuron0731.png",
+        "0004_neuron1741.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1xTEvqfMcsmUaha7RGDMsZMbdSEgQ-P6T",
+        "https://drive.google.com/uc?export=view&id=1-Tf_O169Cp0AVQl67mwSHTpBRzEhZvUa",
+        "https://drive.google.com/uc?export=view&id=1NvolxZoSp07FffIHyZLBa2vOazPqrNOf",
+        "https://drive.google.com/uc?export=view&id=1xW6k_hKnTQTD2KqQlOSgDaxyHfB0GOSk",
+        "https://drive.google.com/uc?export=view&id=13dF3fRm97Wu1ilDDiwZRTm9sSnzWQhsJ"
+      ]
+    },
+    "A large port building with a clock tower in it.": {
+      "files": [
+        "0000_neuron0494.png",
+        "0001_neuron1305.png",
+        "0002_neuron1647.png",
+        "0003_neuron0921.png",
+        "0004_neuron0349.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1qYRLrN3ieez8npy05sBVFNE3nS3ErFDZ",
+        "https://drive.google.com/uc?export=view&id=1cBdbeU6sOljbvqALI730bsEFDzpITvTc",
+        "https://drive.google.com/uc?export=view&id=1y9RNKbuDFChibvvzOWJBIVxNwxSDDpXD",
+        "https://drive.google.com/uc?export=view&id=1OjYrkBSc7SBYyJydY_0B7pTk0g3k3G87",
+        "https://drive.google.com/uc?export=view&id=1S1Os5RXPWCpNcVJMxgTZd8chpAos9xqd"
+      ]
+    },
+    "A large white building with a big clock tower at one corner.": {
+      "files": [
+        "0000_neuron0926.png",
+        "0001_neuron1800.png",
+        "0002_neuron0914.png",
+        "0003_neuron0458.png",
+        "0004_neuron1805.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1kmkeTQOtHe-gDKK7bKpp6jJ7NuIXW-s0",
+        "https://drive.google.com/uc?export=view&id=1vhfRUWLK04KEs4vcgCb_fWc4KH4A2Zi-",
+        "https://drive.google.com/uc?export=view&id=13z9vf61O2xSQbOHoCUJ5VRyf3OuyLJXK",
+        "https://drive.google.com/uc?export=view&id=12qIEcCIi9HQXj2VecN-ExU9KOn_dzGl6",
+        "https://drive.google.com/uc?export=view&id=1S5QUzyqy2VLHMLuCdK4jnHiDKL68pMlu"
+      ]
+    },
+    "A man and woman playfully hugging near group of others.": {
+      "files": [
+        "0000_neuron0014.png",
+        "0001_neuron1611.png",
+        "0002_neuron1290.png",
+        "0003_neuron0414.png",
+        "0004_neuron0325.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1phmOQggPEnJsD8uf7fzFCPk8jGMWlv9X",
+        "https://drive.google.com/uc?export=view&id=1oTK5mboDdci1VooLizgdMVkabb2oZH2V",
+        "https://drive.google.com/uc?export=view&id=11G3qy-mZMXFW8tFyji_XDqSzeKOgzrG8",
+        "https://drive.google.com/uc?export=view&id=1Ep-YX-3l1CP7GU9w699abZYNPwFVfNRG",
+        "https://drive.google.com/uc?export=view&id=1XiBxvZQgF_UdMzvFaHzFjRaoByaG0kEK"
+      ]
+    },
+    "A man in stadium style seats is using a cell phone.": {
+      "files": [
+        "0000_neuron0954.png",
+        "0001_neuron0877.png",
+        "0002_neuron1087.png",
+        "0003_neuron0454.png",
+        "0004_neuron1977.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1CIWkqMCgrZ24ofdtyw3y7aiVynZzXOgi",
+        "https://drive.google.com/uc?export=view&id=1tyjkW8NwMXie0vUDMwJhyTbj4YozHuUd",
+        "https://drive.google.com/uc?export=view&id=1rQA2bo-VEj5sxP_eNaxNBispckpebNBf",
+        "https://drive.google.com/uc?export=view&id=1pC_l-ZlLpNaG4AbsvCtJ04GhEXApZUka",
+        "https://drive.google.com/uc?export=view&id=1rk_L6WjSqgcNsgeQLARlepUwHWU3iKVw"
+      ]
+    },
+    "A man in suit and tie is wearing sunglasses.": {
+      "files": [
+        "0000_neuron0461.png",
+        "0001_neuron1504.png",
+        "0002_neuron1394.png",
+        "0003_neuron0062.png",
+        "0004_neuron0530.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1CNE8NiRhf8Ox-vXjiUo52mKOO-89QTH3",
+        "https://drive.google.com/uc?export=view&id=1D9-FPywQ9mgjO_TPo5qu21to2kj0Ph-3",
+        "https://drive.google.com/uc?export=view&id=1OrU9TaEocqoX8Ne1If11JAPhfghidffe",
+        "https://drive.google.com/uc?export=view&id=1374LMnBvSWOxLRWqYuT_cwHMMAGgT58z",
+        "https://drive.google.com/uc?export=view&id=1SErD7DKip6f4SXQofDl6Ij7Py9JJ9pxM"
+      ]
+    },
+    "A man is standing on a court with a tennis racket.": {
+      "files": [
+        "0000_neuron1947.png",
+        "0001_neuron0186.png",
+        "0002_neuron0973.png",
+        "0003_neuron0056.png",
+        "0004_neuron0738.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1YpvBO3xW9KThGz9eNeq9ljI5J3n9IoPi",
+        "https://drive.google.com/uc?export=view&id=1JseIO1OfyFl_jwaQ26MmBsIz_KgFm0f9",
+        "https://drive.google.com/uc?export=view&id=121i2tJ9P3W9aD6RCimcf_vRPgBydeKmd",
+        "https://drive.google.com/uc?export=view&id=1na8KbnqUo3tdHxpCDcFjxKvggnNB1hMC",
+        "https://drive.google.com/uc?export=view&id=1Pd2fuQWacPzpJ2UL-KtmnWrEzkrmnV8d"
+      ]
+    },
+    "A man talks on his cell phone while he surfs his computer.": {
+      "files": [
+        "0000_neuron1722.png",
+        "0001_neuron1318.png",
+        "0002_neuron1816.png",
+        "0003_neuron1240.png",
+        "0004_neuron0058.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1wGVP1e3-wAe8wCj-jSw5yj2cwwDmjMgx",
+        "https://drive.google.com/uc?export=view&id=1uZOn9dnq8V8gSXbSE34iwXzWUIGuTy7R",
+        "https://drive.google.com/uc?export=view&id=114ZZw-E8KOC9MYz5xjfEyhypKqWbfbhs",
+        "https://drive.google.com/uc?export=view&id=1XaR0RaED2S1A7oz2N4RHOEboSbPyDVX5",
+        "https://drive.google.com/uc?export=view&id=1I-QWNmxeJXCMyZNiAO_h5WxNYIO37v3r"
+      ]
+    },
+    "A person holding a tennis racket on a tennis court.": {
+      "files": [
+        "0000_neuron1099.png",
+        "0001_neuron1677.png",
+        "0002_neuron1430.png",
+        "0003_neuron1050.png",
+        "0004_neuron0916.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1eXK9DG2jYY7SzLRiLWNFkyrLFjk4WJC5",
+        "https://drive.google.com/uc?export=view&id=1xVsCoJmKi9uqOxFIL1QVJAOUz9wHYvEL",
+        "https://drive.google.com/uc?export=view&id=10vahWS72kliwGd5UwqHpposZH1UlrT8d",
+        "https://drive.google.com/uc?export=view&id=1Ex3NhgzOtyXcO9WUBPyqgYwurUgtq3kg",
+        "https://drive.google.com/uc?export=view&id=1Y7IVVDkPTr7APTPAbcLBWtdMPthzFVa1"
+      ]
+    },
+    "A person standing on a surfboard while riding a wave.": {
+      "files": [
+        "0000_neuron1018.png",
+        "0001_neuron1092.png",
+        "0002_neuron0797.png",
+        "0003_neuron0067.png",
+        "0004_neuron1677.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1yGGD603P1UBxEd-gO3E2-h5wdMYxQQUg",
+        "https://drive.google.com/uc?export=view&id=19k2adc3t6vL3UCu2glQHoi4tx1QZpszv",
+        "https://drive.google.com/uc?export=view&id=1yhHIYFHjWmUJk7KMwf950EbLDAhVbzrZ",
+        "https://drive.google.com/uc?export=view&id=1M9L_Tsjf8F8_ZCR-TvSUtK_KBcAR8DXq",
+        "https://drive.google.com/uc?export=view&id=1Fx6IUHPjtm0OJMmv7jiHJtb812gj4eiA"
+      ]
+    },
+    "A person with their mouth open holding a hot dog.": {
+      "files": [
+        "0000_neuron0024.png",
+        "0001_neuron1283.png",
+        "0002_neuron1661.png",
+        "0003_neuron1041.png",
+        "0004_neuron1570.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1jDbYBTfYGhAegh2DKw3v5QEsSaTWrjbs",
+        "https://drive.google.com/uc?export=view&id=1IWoVgHhuYAQ0Knt_kB6Z1wL1p18n-JEP",
+        "https://drive.google.com/uc?export=view&id=1U2fCr9ODKlZ-F4UllKgdj-xf8C7LSDCt",
+        "https://drive.google.com/uc?export=view&id=1Xy6D0G1foF4gcmV0lAU1InQVI96bjYZv",
+        "https://drive.google.com/uc?export=view&id=1XtSkwc_KqcR-AIOs8hZh8eR8b0sb_QgA"
+      ]
+    },
+    "A plate filled with a sub sandwich and some fries.": {
+      "files": [
+        "0000_neuron0563.png",
+        "0001_neuron1587.png",
+        "0002_neuron0008.png",
+        "0003_neuron1759.png",
+        "0004_neuron1749.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1yKNjnIRgB5l-yGpTN7TAeScUMNPyTQSs",
+        "https://drive.google.com/uc?export=view&id=13hUiNEPeKRh8VKfAC596NViquM3tZSDF",
+        "https://drive.google.com/uc?export=view&id=12kzrkf3r_uPL5ZSn9tpWSTERkPP9Uz5h",
+        "https://drive.google.com/uc?export=view&id=1dfzqAMX3eLbOa5qyh_LTpIFXLHuGZhZ5",
+        "https://drive.google.com/uc?export=view&id=1xEVeiP4tt-VRdX8WaC33TQqXsp3IWk1r"
+      ]
+    },
+    "A slice of cake and a fork by sliced orange and a guinness.": {
+      "files": [
+        "0000_neuron1099.png",
+        "0001_neuron0248.png",
+        "0002_neuron1430.png",
+        "0003_neuron1586.png",
+        "0004_neuron1641.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1hPx9ZKOP3WajIqFWmdST55_-9kqOgsv7",
+        "https://drive.google.com/uc?export=view&id=1BaI7pXgZUZitcOKM_6mUaV5zcnEOnfVr",
+        "https://drive.google.com/uc?export=view&id=1a8Pr2YZqeAesDkOSF7DguRqRco0fzeOZ",
+        "https://drive.google.com/uc?export=view&id=1V9ygC3LrHJ1k-epBwp7GMLH2AXoPcZDt",
+        "https://drive.google.com/uc?export=view&id=1Zs3-Jr7DxZoOTzjnGKpcBnrDWf_6PchZ"
+      ]
+    },
+    "A stop sign stands at an intersection of two streets.": {
+      "files": [
+        "0000_neuron0931.png",
+        "0001_neuron1270.png",
+        "0002_neuron0639.png",
+        "0003_neuron0488.png",
+        "0004_neuron1015.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1gXyuNTzA68yMCD72Q1hWB8Z35N7vR85g",
+        "https://drive.google.com/uc?export=view&id=1_VhWJngfttuVZ5cD3ZYe5C2agNjbax0A",
+        "https://drive.google.com/uc?export=view&id=1v4gWNOhzKZNmH9fYtIfBhHLKUhUT2nNs",
+        "https://drive.google.com/uc?export=view&id=1blKyTwkq4KU0km643IHO8RWd5pPMuKXb",
+        "https://drive.google.com/uc?export=view&id=1hlxhiGOT1LyOyDbC5ELFFRqsKDz5XqSO"
+      ]
+    },
+    "A table with different monitors on it and keyboards.": {
+      "files": [
+        "0000_neuron0416.png",
+        "0001_neuron1256.png",
+        "0002_neuron0879.png",
+        "0003_neuron1902.png",
+        "0004_neuron0537.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1dstYGy71srWAaDRghWOvN3_4b1CiimHH",
+        "https://drive.google.com/uc?export=view&id=1F_2niLe8z4j6S8gnztcJayLR2BXDqEj6",
+        "https://drive.google.com/uc?export=view&id=1LxDy0HsrQicoFKCsv9_esbFOlT-exeb5",
+        "https://drive.google.com/uc?export=view&id=1pNBMmdqnAEPoiI40YV3hN2oewi3jCVvY",
+        "https://drive.google.com/uc?export=view&id=1QzPDgnbLgoDdi_0TDTpq6pto7as_WL_h"
+      ]
+    },
+    "A tennis player getting ready to serve the ball.": {
+      "files": [
+        "0000_neuron1283.png",
+        "0001_neuron0261.png",
+        "0002_neuron1030.png",
+        "0003_neuron1752.png",
+        "0004_neuron0384.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1ZgrstP19R0mjBWOU5AXCiNsYT3b2JK9j",
+        "https://drive.google.com/uc?export=view&id=1_i5v7E4dc_AsOyKbZaWAF_onOpgFSASk",
+        "https://drive.google.com/uc?export=view&id=1zfsR2KUoCmaS0cZRi6V5_Sj_gdshtZXH",
+        "https://drive.google.com/uc?export=view&id=1r3-qmQOy-1weRzdEuj5fNtuTUiLAsadC",
+        "https://drive.google.com/uc?export=view&id=1mDncAAiOTGuRR6gSbY9A_1QD4o4t1nhE"
+      ]
+    },
+    "A white volkswagon has a surfboard on top.": {
+      "files": [
+        "0000_neuron1261.png",
+        "0001_neuron0646.png",
+        "0002_neuron1688.png",
+        "0003_neuron1965.png",
+        "0004_neuron1907.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1Vkbp3IhNb-yyaNu07dmoN1z8UE3g_3vL",
+        "https://drive.google.com/uc?export=view&id=1bQmnCgrsJFcybR-By0XOY3PRr6lRe_p1",
+        "https://drive.google.com/uc?export=view&id=15sI27mj3_CPWgnanT_zQAbhQbQtWwvyE",
+        "https://drive.google.com/uc?export=view&id=1wVLLT-Eg5y99Ae8ap_cY29CXFArutOn1",
+        "https://drive.google.com/uc?export=view&id=1cXdrs9V7HZ_u6U4ha02MtXYBlOPXe41k"
+      ]
+    },
+    "A woman baking a pizza pie in the kitchen.": {
+      "files": [
+        "0000_neuron0609.png",
+        "0001_neuron0954.png",
+        "0002_neuron1779.png",
+        "0003_neuron0158.png",
+        "0004_neuron1641.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=11PMkwv-ggSHXFoy47kdjSJHOECmthhRO",
+        "https://drive.google.com/uc?export=view&id=1S9lOJbLc_PAelktJpo80bEmkt7cRLF2d",
+        "https://drive.google.com/uc?export=view&id=1M_Qtb2v4naKhk5Sqq09O333cLmjzDgjU",
+        "https://drive.google.com/uc?export=view&id=1y_zd5x7o3FioZcSAOb264qpw3BbFP692",
+        "https://drive.google.com/uc?export=view&id=1dj6ecv74QuMRuWkmJNvAf-3iVaDtKbWm"
+      ]
+    },
+    "A woman in a kitchen with wood cabinets and drawers.": {
+      "files": [
+        "0000_neuron0213.png",
+        "0001_neuron0426.png",
+        "0002_neuron0153.png",
+        "0003_neuron0709.png",
+        "0004_neuron2037.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1DA5sXqk7hQk09aLG4UJU7DQMPLyQiCsY",
+        "https://drive.google.com/uc?export=view&id=1gMu5zPRTYD8txzipAJLXTW27fAJLHkgQ",
+        "https://drive.google.com/uc?export=view&id=1RsUtuzIc_v6Mc2m4GoE1ekIC0n7IZORx",
+        "https://drive.google.com/uc?export=view&id=1id8WvDlWcN7Txa0uwC-Pmi6zDG1NyleB",
+        "https://drive.google.com/uc?export=view&id=1lAihPWXSpLbvDsNp-kgKeTKl6qO9tK62"
+      ]
+    },
+    "A woman in a pink hat is on a phone.": {
+      "files": [
+        "0000_neuron1706.png",
+        "0001_neuron0250.png",
+        "0002_neuron0175.png",
+        "0003_neuron1914.png",
+        "0004_neuron1228.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1zOW-TwY2B-OUeedQ4m9MLOfzl8uYNiYJ",
+        "https://drive.google.com/uc?export=view&id=1Z1M_gfeE_RYgjhjEkDSjHBqnvzawXkIR",
+        "https://drive.google.com/uc?export=view&id=1MIb1LoXSvEQiUj0LbLjM5arsh8HiRb5E",
+        "https://drive.google.com/uc?export=view&id=1-DMDPHuC6L2LRWkXeXkaB9qDrDFDHcFf",
+        "https://drive.google.com/uc?export=view&id=1hZLNCzkckYTRSZd3uZlgNhXV5GneAsF_"
+      ]
+    },
+    "A woman is taking a picture of herself in front of a computer.": {
+      "files": [
+        "0000_neuron0896.png",
+        "0001_neuron0093.png",
+        "0002_neuron0954.png",
+        "0003_neuron0008.png",
+        "0004_neuron0511.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=15XYstd6XYzXQpOmC2J-o9gME2lou2E9b",
+        "https://drive.google.com/uc?export=view&id=1yOrb6s8WPFLk-02EXPCD52_QSqfg7o_n",
+        "https://drive.google.com/uc?export=view&id=1Pj8ptT0y-5k8Z5GOxCmXw1_XoZS0Dvrp",
+        "https://drive.google.com/uc?export=view&id=1XPtPVkn8yI0CT7OSDVZ3DUMbFY2LBf83",
+        "https://drive.google.com/uc?export=view&id=1NBWmA-l-akNy8OQBhZFODpCneP_xfW1H"
+      ]
+    },
+    "A woman serving a tennis ball in a public match.": {
+      "files": [
+        "0000_neuron0075.png",
+        "0001_neuron1040.png",
+        "0002_neuron0854.png",
+        "0003_neuron0528.png",
+        "0004_neuron0636.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1MtV_zL3TDgvJS5hbJ2AWOEHmSOG5k8Kz",
+        "https://drive.google.com/uc?export=view&id=1LtdfT7G7hjJePjT4ym4kyVlimrBi0kLd",
+        "https://drive.google.com/uc?export=view&id=1okh_Ngrcf_VEMz4c3iuv-lBgAoDOS8VC",
+        "https://drive.google.com/uc?export=view&id=1bkmyeXO0sel5NbqsWDHAOlGENdo-5AH7",
+        "https://drive.google.com/uc?export=view&id=1PoihtYrhvPAgjIdV6s4mPj5dC-wdTDWC"
+      ]
+    },
+    "A woman stands with one arm in the air as she holds a tennis racquet in the other hand.": {
+      "files": [
+        "0000_neuron0764.png",
+        "0001_neuron1146.png",
+        "0002_neuron0428.png",
+        "0003_neuron0889.png",
+        "0004_neuron0309.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1YvAK2sQyouxU15a0OODAR4_kIFR1w79D",
+        "https://drive.google.com/uc?export=view&id=1FXRlWtn7jHGqic0L2K17hr5gJ8O15R4f",
+        "https://drive.google.com/uc?export=view&id=1UP7QLimNYR8PcZUcukNP7aqKlCMLESK-",
+        "https://drive.google.com/uc?export=view&id=1m19-EiAf5xoejHYPdBqtNUqhNhA29Meu",
+        "https://drive.google.com/uc?export=view&id=10cwT3Gvm6Pz8D4g3FBLz-d37kwe3LLYW"
+      ]
+    },
+    "A young boy standing over a bed next to a dog.": {
+      "files": [
+        "0000_neuron1099.png",
+        "0001_neuron0305.png",
+        "0002_neuron1190.png",
+        "0003_neuron1222.png",
+        "0004_neuron1553.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1DGVeZ8v_UZKlPbYTOLGJsCC2T1sQBg9d",
+        "https://drive.google.com/uc?export=view&id=1COaZECDLtzbDIMmvIBvHFR0Envi_RNpC",
+        "https://drive.google.com/uc?export=view&id=1vNvWIGIuBHYpfIl578VyHdf_22q09QjV",
+        "https://drive.google.com/uc?export=view&id=1jjuIJ22QgfsZRbnCWQM47F7K-ed_pyMM",
+        "https://drive.google.com/uc?export=view&id=1wgKP7M7kT0Qh2243zq0QxDjyUH4MAHqc"
+      ]
+    },
+    "A young skater is boarding inside of an empty pool.": {
+      "files": [
+        "0000_neuron0932.png",
+        "0001_neuron1874.png",
+        "0002_neuron1040.png",
+        "0003_neuron1115.png",
+        "0004_neuron0227.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1m-ka2dtqcoZYbhbg91hm9IYib6eSgHGD",
+        "https://drive.google.com/uc?export=view&id=1j70duHvw27Mo_s3MNWb99WFx2q-rzXct",
+        "https://drive.google.com/uc?export=view&id=1DAhLMX2aQtT4GDogp9_8VsK9vmVy_IUm",
+        "https://drive.google.com/uc?export=view&id=1TGmNkdthlcRnZIaiMBXq-STI5HYWYFFW",
+        "https://drive.google.com/uc?export=view&id=135RxaWTteCt1fwKfO2Mt3tAGCoWPGDCD"
+      ]
+    },
+    "A young woman poses comically with a piece of pizza in her mouth.": {
+      "files": [
+        "0000_neuron1358.png",
+        "0001_neuron1856.png",
+        "0002_neuron1838.png",
+        "0003_neuron1262.png",
+        "0004_neuron1970.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1uVHTS_G04IalxLeGsyTCnLCYYFH3sA1c",
+        "https://drive.google.com/uc?export=view&id=1X0VQ8uUMxpSJnn1qrgR6gk3mpOwo8qlQ",
+        "https://drive.google.com/uc?export=view&id=1HyQvwqad2aFFbafqpVzqqMhNKJ9lKZFc",
+        "https://drive.google.com/uc?export=view&id=1qLpnle5lylbtvEjwzsd4l-Bs5PuZ4pg7",
+        "https://drive.google.com/uc?export=view&id=1s4qK0Itbt-4IyGWPic8I9fjqnZIfiR3y"
+      ]
+    },
+    "A zebra and a rhino are on some orange dirt.": {
+      "files": [
+        "0000_neuron1269.png",
+        "0001_neuron1009.png",
+        "0002_neuron0204.png",
+        "0003_neuron0318.png",
+        "0004_neuron1669.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1B8WTGC-KvyF13jL1qpAfPyJHkxAmTPnJ",
+        "https://drive.google.com/uc?export=view&id=1bzzy4CrKK1d5vLYKXW8PiRVVvzx5u0Bt",
+        "https://drive.google.com/uc?export=view&id=1tpiZyewYroxs7Sv6e5jP-nnHPqPMxqJZ",
+        "https://drive.google.com/uc?export=view&id=1LQflkDy-PSOeRp9HnV9ekmhz9xxOBW7C",
+        "https://drive.google.com/uc?export=view&id=1E0BhsFuXSYvTV31gJNGcBCIROx9vZjtm"
+      ]
+    },
+    "An image of a kitchen setting with formica counter.": {
+      "files": [
+        "0000_neuron1620.png",
+        "0001_neuron1953.png",
+        "0002_neuron0641.png",
+        "0003_neuron1233.png",
+        "0004_neuron0019.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1ZsEAHn9SxNcoryRZsmTRtK4o-l3EhebY",
+        "https://drive.google.com/uc?export=view&id=1ELb7qv7nNw91q0Kz2l3frCda4x8uXvYs",
+        "https://drive.google.com/uc?export=view&id=18dWx2SIbGEBi0qHNWnIEPU9iEhhF2rnL",
+        "https://drive.google.com/uc?export=view&id=1c7m_a6ogft-Q5r6hqGFb-Wn6kF9I0dER",
+        "https://drive.google.com/uc?export=view&id=1sukYTf8udiqn38vx9EOHqVJP3CyCVS0m"
+      ]
+    },
+    "Career highlight information about robert clemente at a baseball field during a baseball game.": {
+      "files": [
+        "0000_neuron1958.png",
+        "0001_neuron1413.png",
+        "0002_neuron1982.png",
+        "0003_neuron1252.png",
+        "0004_neuron0357.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1A_jW2ctuv9uOd0eViq_S05uHps9LtLyP",
+        "https://drive.google.com/uc?export=view&id=1C6ouZZRQeLoU-xXMcoIZS5TQgNOgSSAk",
+        "https://drive.google.com/uc?export=view&id=1M-cBVH6h1uriOaxh_KJm6CiBIg0rkKeb",
+        "https://drive.google.com/uc?export=view&id=1KnmjvORgfr1Nkv_TpX8BXwmvV_KXeCco",
+        "https://drive.google.com/uc?export=view&id=1zVhRmaIlFhsTVluc14F_X_TFPcRZl2id"
+      ]
+    },
+    "Kids surfing the waves on their surf boards.": {
+      "files": [
+        "0000_neuron1888.png",
+        "0001_neuron0815.png",
+        "0002_neuron1176.png",
+        "0003_neuron0429.png",
+        "0004_neuron1018.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1DF07Xr01JvpXoQmWUQfKZZqAinvaMUWN",
+        "https://drive.google.com/uc?export=view&id=1ESRp50wdQkYJbExffiFGNeCGHESfLjqt",
+        "https://drive.google.com/uc?export=view&id=12Nuww0ndWZ7jnidwyJD8z4IumwaqsVQK",
+        "https://drive.google.com/uc?export=view&id=1RDq7k_W_silQAkFrrJyY2pTa8Exxi2ix",
+        "https://drive.google.com/uc?export=view&id=1Yn0hoxuxn2Lm1iacjME-QcGvsMLqC1J6"
+      ]
+    },
+    "Man in black blazer pouring wine in glasses.": {
+      "files": [
+        "0000_neuron0531.png",
+        "0001_neuron1283.png",
+        "0002_neuron0445.png",
+        "0003_neuron1752.png",
+        "0004_neuron1330.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1JSSAUNtdIsdLIpXG4UggTtjKLuMolW0a",
+        "https://drive.google.com/uc?export=view&id=1rQm5gxTWaNCSKRJZww2NO51CZPu9f7ax",
+        "https://drive.google.com/uc?export=view&id=1J3ob_um5HINbNY78-rF9yJC110IVYxAp",
+        "https://drive.google.com/uc?export=view&id=1t-jZf7wmBa31mar7D6JYiJLICGr8yOXZ",
+        "https://drive.google.com/uc?export=view&id=1Jq8ZjwJ3zr_F1FaeWV0s2JN4a8LeOJSn"
+      ]
+    },
+    "Several different electronic products that are turned on.": {
+      "files": [
+        "0000_neuron0711.png",
+        "0001_neuron1053.png",
+        "0002_neuron1133.png",
+        "0003_neuron0856.png",
+        "0004_neuron1463.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=150lJU5m4WLW81TKZVShKoFzu4CV_td-I",
+        "https://drive.google.com/uc?export=view&id=1MHYjvOcVTFCG80R_5QJmQcDo_B2OMuPB",
+        "https://drive.google.com/uc?export=view&id=1evr6p8NyTIGrJN4gs7A2rsuM2L_QZQo4",
+        "https://drive.google.com/uc?export=view&id=1gLklz_JKrrb1nphmUvuiIJOBFijZsjRI",
+        "https://drive.google.com/uc?export=view&id=19LtgToyNrrWJfpnTCzgAVUkCa2b09DpW"
+      ]
+    },
+    "The riders meander down the beach on their horses.": {
+      "files": [
+        "0000_neuron1323.png",
+        "0001_neuron0722.png",
+        "0002_neuron1813.png",
+        "0003_neuron0510.png",
+        "0004_neuron0310.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1IyGSbfttQZFNAmQYaRUcjgafX_YOWl0v",
+        "https://drive.google.com/uc?export=view&id=1LBaG64SuBKPfLsbgjpcwiikBjxBE9s0k",
+        "https://drive.google.com/uc?export=view&id=1Kxj_8H40bMZLIhpTlCIazsxetMa4F4nQ",
+        "https://drive.google.com/uc?export=view&id=1GEi37Ffs5k-Z0r-XnUy0wTQC6WoJyWBT",
+        "https://drive.google.com/uc?export=view&id=1L06AvjISlY7Vei0La1qChmHhi-H4SN3G"
+      ]
+    },
+    "The surfing board is on the sand on the beach.": {
+      "files": [
+        "0000_neuron1418.png",
+        "0001_neuron1713.png",
+        "0002_neuron1200.png",
+        "0003_neuron1905.png",
+        "0004_neuron0840.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1OS5BE4hvms0wESI1LIRgqn-jUrBd87LH",
+        "https://drive.google.com/uc?export=view&id=1aKHsRc0HAOkvMbbxnid8jS4uasKYnRNZ",
+        "https://drive.google.com/uc?export=view&id=12K2kHomMI8xpdttYAoMYxjQXy8lU7xRr",
+        "https://drive.google.com/uc?export=view&id=1n2Vdi5sRMp7NRmseBzBmQ6JlYNQJi4SJ",
+        "https://drive.google.com/uc?export=view&id=1BU0Owhu9o7uTHSEhSqbr0-MqQTNk1R71"
+      ]
+    },
+    "There are four woman talking at a tennis game.": {
+      "files": [
+        "0000_neuron1059.png",
+        "0001_neuron0899.png",
+        "0002_neuron1715.png",
+        "0003_neuron1804.png",
+        "0004_neuron1641.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1s5cag-j2KeJpy6w1qkAcPiQOdh0e5IYE",
+        "https://drive.google.com/uc?export=view&id=1UIcE61ZteNP50z057rmk6qSQ5P3llF6e",
+        "https://drive.google.com/uc?export=view&id=1Pp99VkUqqSRvlSsr4zDH8XNTV9nwLfmt",
+        "https://drive.google.com/uc?export=view&id=1ElHprR1B3oEofE6lSiMpbmbv-I8NoIIv",
+        "https://drive.google.com/uc?export=view&id=1vmajpBgN5tojpDM3oMaN86UOVULd2HQE"
+      ]
+    },
+    "Two apple products with two people lounging behind them.": {
+      "files": [
+        "0000_neuron1174.png",
+        "0001_neuron0437.png",
+        "0002_neuron0466.png",
+        "0003_neuron0483.png",
+        "0004_neuron0220.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1UVA52UVv7TuFMkiYN3QNNkde2spMa0ee",
+        "https://drive.google.com/uc?export=view&id=1axho17ZCKX61ujgeZCM3ElS8Ba5_ikCp",
+        "https://drive.google.com/uc?export=view&id=1mKC74nbmU9ISfNWd9b_iNwXUGy4sE1nl",
+        "https://drive.google.com/uc?export=view&id=11gH7Eci8rCj9c27vyS1-Wrm9qKt2lzP3",
+        "https://drive.google.com/uc?export=view&id=1vr3fL1oVBwwgfCH6rM8onlj5XvmJTdbh"
+      ]
+    },
+    "Two people flying a kite at the beach.": {
+      "files": [
+        "0000_neuron1126.png",
+        "0001_neuron1786.png",
+        "0002_neuron1452.png",
+        "0003_neuron0931.png",
+        "0004_neuron1662.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=17HJNiy7Y4iOaoNcZNTxTRwl5h_LOkKc2",
+        "https://drive.google.com/uc?export=view&id=1OsZ5bUQUSPFN3YybLDOEROrEd58vXx8r",
+        "https://drive.google.com/uc?export=view&id=1Mm287q6Hs-_vUmvzJvsHjCROJM76-BPQ",
+        "https://drive.google.com/uc?export=view&id=1gLe3qmhJfpsjlUwUK98nn2lyUXTS1G0B",
+        "https://drive.google.com/uc?export=view&id=18KwRHAp_xyfT3JEQ2Hi4PZ8s7huN29fO"
+      ]
+    },
+    "Two small baseball players each have on helmets.": {
+      "files": [
+        "0000_neuron0283.png",
+        "0001_neuron1483.png",
+        "0002_neuron1628.png",
+        "0003_neuron0633.png",
+        "0004_neuron1099.png"
+      ],
+      "urls": [
+        "https://drive.google.com/uc?export=view&id=1G9Sm-vkZPhhENxOFtvzAy8nm7IEXgzzL",
+        "https://drive.google.com/uc?export=view&id=1Ps17BFVTbzJ3FEX8oQvQqXOVsHw0grXK",
+        "https://drive.google.com/uc?export=view&id=1jiR8FRLuWRFrsahCUncxsIWBuv1VSAd_",
+        "https://drive.google.com/uc?export=view&id=1BiTrdZ9f7emWIhsE2Oy-3z6-IvY-YNdw",
+        "https://drive.google.com/uc?export=view&id=1T9KUQ2XL5VVPTwABiN5fTiE8tUUUH9BE"
+      ]
+    }
+  }
+};
+
+const selTask   = document.getElementById('sel-task');
+const selPrompt = document.getElementById('sel-prompt');
+const selTopN   = document.getElementById('sel-topn');
+const topNGroup = document.getElementById('topn-group');
+const gallery   = document.getElementById('gallery');
+const status    = document.getElementById('status');
+
+function driveFallbackUrls(url) {
+  const idMatch = url.match(/[?&]id=([^&]+)/);
+  if (!idMatch) return [url];
+
+  const id = idMatch[1];
+  return [
+    url,
+    `https://drive.usercontent.google.com/download?id=${id}&export=view`,
+    `https://lh3.googleusercontent.com/d/${id}=s2048`
+  ];
+}
+
+function populatePrompts(task) {
+  const data = MANIFEST[task] || {};
+  selPrompt.innerHTML = '<option value="">— select a prompt —</option>';
+  Object.keys(data).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    selPrompt.appendChild(opt);
+  });
+  selPrompt.value = '';
+}
+
+function render() {
+  const task   = selTask.value;
+  const prompt = selPrompt.value;
+  const topN   = parseInt(selTopN.value, 10);
+
+  topNGroup.classList.toggle('hidden', task === 'coco');
+
+  if (!prompt) {
+    gallery.innerHTML = '<p id="placeholder">Select a task and prompt above to view minority neuron visualisations.</p>';
+    status.textContent = '';
+    return;
+  }
+
+  const entry = MANIFEST[task][prompt];
+  if (!entry) { gallery.innerHTML = '<p>No data found.</p>'; return; }
+
+  const n     = task === 'coco' ? entry.urls.length : topN;
+  const urls  = entry.urls.slice(0, n);
+  const fnames = entry.files.slice(0, n);
+
+  status.textContent = `Showing ${urls.length} minority neuron${urls.length !== 1 ? 's' : ''} for "${prompt}"`;
+
+  gallery.innerHTML = '';
+  urls.forEach((url, i) => {
+    const match  = fnames[i].match(/_(neuron\d+)\.png$/);
+    const neuron = match ? match[1] : `neuron${i}`;
+
+    const row = document.createElement('div');
+    row.className = 'neuron-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'neuron-label';
+    lbl.innerHTML = `<strong>rank ${String(i+1).padStart(2,'0')}</strong><span>${neuron.replace('neuron','#')}</span>`;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'img-wrap';
+
+    const loading = document.createElement('div');
+    loading.className = 'loading';
+    loading.textContent = 'loading…';
+    wrap.appendChild(loading);
+
+    const img = document.createElement('img');
+    img.alt = neuron;
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    const candidates = driveFallbackUrls(url);
+    let candidateIdx = 0;
+    img.onload  = () => loading.remove();
+    img.onerror = () => {
+      candidateIdx += 1;
+      if (candidateIdx < candidates.length) {
+        loading.textContent = 'retrying…';
+        img.src = candidates[candidateIdx];
+        return;
+      }
+      loading.textContent = 'failed to load';
+    };
+    img.src = candidates[candidateIdx];
+    wrap.appendChild(img);
+
+    row.appendChild(lbl);
+    row.appendChild(wrap);
+    gallery.appendChild(row);
+  });
+}
+
+selTask.addEventListener('change', () => { populatePrompts(selTask.value); render(); });
+selPrompt.addEventListener('change', render);
+selTopN.addEventListener('change', render);
+
+populatePrompts(selTask.value);
+</script>
+</body>
+</html>
