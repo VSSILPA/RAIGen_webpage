@@ -123,9 +123,6 @@
   select:hover { border-color: #aaa; }
   select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 
-  #topn-group { transition: opacity 0.2s; }
-  #topn-group.hidden { opacity: 0; pointer-events: none; }
-
   /* ── Main gallery ── */
   main {
     padding: 1.75rem 24px;
@@ -230,14 +227,6 @@
   <div class="ctrl-group">
     <label>Prompt</label>
     <select id="sel-prompt"><option value="">— select a prompt —</option></select>
-  </div>
-  <div class="ctrl-group" id="topn-group">
-    <label>Top-N neurons</label>
-    <select id="sel-topn">
-      <option value="5">Top 5</option>
-      <option value="10" selected>Top 10</option>
-      <option value="15">Top 15</option>
-    </select>
   </div>
 </div>
 
@@ -1380,8 +1369,6 @@ const MANIFEST = {
 
 const selTask   = document.getElementById('sel-task');
 const selPrompt = document.getElementById('sel-prompt');
-const selTopN   = document.getElementById('sel-topn');
-const topNGroup = document.getElementById('topn-group');
 const gallery   = document.getElementById('gallery');
 const status    = document.getElementById('status');
 
@@ -1412,9 +1399,6 @@ function populatePrompts(task) {
 function render() {
   const task   = selTask.value;
   const prompt = selPrompt.value;
-  const topN   = parseInt(selTopN.value, 10);
-
-  topNGroup.classList.toggle('hidden', task === 'coco');
 
   if (!prompt) {
     gallery.innerHTML = '<p id="placeholder">Select a task and prompt above to view minority neuron visualisations.</p>';
@@ -1425,7 +1409,7 @@ function render() {
   const entry = MANIFEST[task][prompt];
   if (!entry) { gallery.innerHTML = '<p>No data found.</p>'; return; }
 
-  const n     = task === 'coco' ? entry.urls.length : topN;
+  const n     = 5;
   const urls  = entry.urls.slice(0, n);
   const fnames = entry.files.slice(0, n);
 
