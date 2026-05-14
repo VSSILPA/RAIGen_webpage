@@ -1462,7 +1462,6 @@ function render() {
 
 selTask.addEventListener('change', () => { populatePrompts(selTask.value); render(); });
 selPrompt.addEventListener('change', render);
-selTopN.addEventListener('change', render);
 
 populatePrompts(selTask.value);
 </script>
